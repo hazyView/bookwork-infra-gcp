@@ -39,3 +39,8 @@ terraform.rc
 *.swp
 *.swo
 *~
+
+#Implementation plan
+impl_bk.md
+tfplan
+*.png

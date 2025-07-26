@@ -18,7 +18,7 @@ variable "project" {
 variable "domain_name" {
   description = "Domain name for SSL certificate"
   type        = string
-  default     = "bookwork.demo.com"
+  default     = "bookwork-demo.com"
 }
 
 variable "api_image_tag" {

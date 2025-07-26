@@ -8,7 +8,7 @@ output "domain_name" {
   value       = var.domain_name
 }
 
-output "api_service_url" {
+/* output "api_service_url" {
   description = "The URL of the Cloud Run API service"
   value       = google_cloud_run_v2_service.api.uri
 }
@@ -16,7 +16,7 @@ output "api_service_url" {
 output "frontend_service_url" {
   description = "The URL of the Cloud Run frontend service"
   value       = google_cloud_run_v2_service.frontend.uri
-}
+} */
 
 output "api_artifact_registry_url" {
   description = "The Artifact Registry URL for the API repository"
@@ -30,8 +30,8 @@ output "frontend_artifact_registry_url" {
 
 output "ssl_certificate_status" {
   description = "The status of the managed SSL certificate"
-  value       = google_compute_managed_ssl_certificate.default.managed[0].status
-}
+  value       = google_compute_managed_ssl_certificate.bookwork_ssl.self_link
+} 
 
 output "dns_instructions" {
   description = "DNS configuration instructions"

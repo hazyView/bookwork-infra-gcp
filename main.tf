@@ -53,7 +53,7 @@ resource "google_project_iam_member" "cloud_run_invoker" {
 }
 
 # Cloud Run API service
-resource "google_cloud_run_v2_service" "api" {
+ resource "google_cloud_run_v2_service" "api" {
   project  = var.project_id
   name     = "${var.project}-api"
   location = var.region
@@ -70,6 +70,10 @@ resource "google_cloud_run_v2_service" "api" {
     containers {
       image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.api.repository_id}/api:${var.api_image_tag}"
       
+      env{
+        name = "BOOKWORK_API_MOCK_DATA"
+        value = "true" # Set to "false" in production
+      }
       ports {
         container_port = 8080
       }
@@ -187,19 +191,23 @@ resource "google_cloud_run_service_iam_binding" "frontend_noauth" {
   ]
 }
 
+
 # Global IP address for the load balancer
 resource "google_compute_global_address" "default" {
   project = var.project_id
   name    = "${var.project}-lb-ip"
 }
-
+ 
 # Google-managed SSL certificate
-resource "google_compute_managed_ssl_certificate" "default" {
+resource "google_compute_managed_ssl_certificate" "bookwork_ssl" {
   project = var.project_id
-  name    = "${var.project}-ssl-cert"
+  name    = "bookwork-ssl"
 
   managed {
-    domains = [var.domain_name]
+    domains = [
+      var.domain_name,
+      "www.${var.domain_name}"
+      ]
   }
 }
 
@@ -215,8 +223,6 @@ resource "google_compute_backend_service" "api" {
   backend {
     group = google_compute_region_network_endpoint_group.api.id
   }
-
-  health_checks = [google_compute_health_check.api.id]
 }
 
 # Backend service for frontend
@@ -231,8 +237,6 @@ resource "google_compute_backend_service" "frontend" {
   backend {
     group = google_compute_region_network_endpoint_group.frontend.id
   }
-
-  health_checks = [google_compute_health_check.frontend.id]
 }
 
 # Network Endpoint Group for API service
@@ -245,6 +249,7 @@ resource "google_compute_region_network_endpoint_group" "api" {
   cloud_run {
     service = google_cloud_run_v2_service.api.name
   }
+
 }
 
 # Network Endpoint Group for frontend service
@@ -256,7 +261,7 @@ resource "google_compute_region_network_endpoint_group" "frontend" {
 
   cloud_run {
     service = google_cloud_run_v2_service.frontend.name
-  }
+  } 
 }
 
 # Health checks
@@ -291,7 +296,7 @@ resource "google_compute_health_check" "frontend" {
 }
 
 # URL map for the load balancer
-resource "google_compute_url_map" "default" {
+ resource "google_compute_url_map" "default" {
   project         = var.project_id
   name            = "${var.project}-urlmap"
   default_service = google_compute_backend_service.frontend.id
@@ -310,15 +315,15 @@ resource "google_compute_url_map" "default" {
       service = google_compute_backend_service.api.id
     }
   }
-}
+} 
 
 # HTTP(S) target proxy
-resource "google_compute_target_https_proxy" "default" {
+ resource "google_compute_target_https_proxy" "default" {
   project          = var.project_id
   name             = "${var.project}-https-proxy"
   url_map          = google_compute_url_map.default.id
-  ssl_certificates = [google_compute_managed_ssl_certificate.default.id]
-}
+  ssl_certificates = [google_compute_managed_ssl_certificate.bookwork_ssl.id]
+} 
 
 # HTTP target proxy for redirect
 resource "google_compute_target_http_proxy" "default" {
@@ -340,13 +345,13 @@ resource "google_compute_url_map" "redirect_to_https" {
 }
 
 # Global forwarding rule for HTTPS
-resource "google_compute_global_forwarding_rule" "https" {
+ resource "google_compute_global_forwarding_rule" "https" {
   project    = var.project_id
   name       = "${var.project}-https-forwarding-rule"
   target     = google_compute_target_https_proxy.default.id
   port_range = "443"
   ip_address = google_compute_global_address.default.address
-}
+} 
 
 # Global forwarding rule for HTTP (redirect to HTTPS)
 resource "google_compute_global_forwarding_rule" "http" {
