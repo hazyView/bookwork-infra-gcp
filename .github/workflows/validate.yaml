@@ -15,6 +15,14 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
 
+      - name: Export Terraform variables from repo secrets
+        run: |
+          echo "TF_VAR_project_id=${{ secrets.TF_VAR_PROJ_ID }}" >> $GITHUB_ENV
+          echo "TF_VAR_region=${{ secrets.TF_VAR_REGION }}" >> $GITHUB_ENV
+          echo "TF_VAR_api_image_tag=${{ secrets.TF_VAR_API_IMAGE_TAG }}" >> $GITHUB_ENV
+          echo "TF_VAR_frontend_image_tag=${{ secrets.TF_VAR_FRONTEND_IMAGE_TAG }}" >> $GITHUB_ENV
+          echo "TF_VAR_domain_name=${{ secrets.TF_VAR_DOMAIN_NAME }}" >> $GITHUB_ENV
+
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
 
