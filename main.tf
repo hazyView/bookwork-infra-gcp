@@ -174,7 +174,7 @@ resource "google_cloud_run_v2_service" "frontend" {
 resource "google_cloud_run_v2_service_iam_binding" "api_noauth" {
   project  = var.project_id
   location = var.region
-  service  = google_cloud_run_v2_service.api.name
+  name     = "${var.project}-api"
   role     = "roles/run.invoker"
   members = [
     "allUsers"
@@ -184,7 +184,7 @@ resource "google_cloud_run_v2_service_iam_binding" "api_noauth" {
 resource "google_cloud_run_v2_service_iam_binding" "frontend_noauth" {
   project  = var.project_id
   location = google_cloud_run_v2_service.frontend.location
-  service  = google_cloud_run_v2_service.frontend.name
+  name     = "${var.project}-frontend"
   role     = "roles/run.invoker"
   members = [
     "allUsers"
