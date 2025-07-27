@@ -22,6 +22,7 @@ jobs:
           echo "TF_VAR_api_image_tag=${{ secrets.TF_VAR_API_IMAGE_TAG }}" >> $GITHUB_ENV
           echo "TF_VAR_frontend_image_tag=${{ secrets.TF_VAR_FRONTEND_IMAGE_TAG }}" >> $GITHUB_ENV
           echo "TF_VAR_domain_name=${{ secrets.TF_VAR_DOMAIN_NAME }}" >> $GITHUB_ENV
+          echo "TF_VAR_PROJ=${{ secrets.TF_VAR_PROJ }}" >> $GITHUB_ENV
 
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
