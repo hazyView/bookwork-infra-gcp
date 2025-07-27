@@ -173,7 +173,7 @@ resource "google_cloud_run_v2_service" "frontend" {
 # Allow unauthenticated invocations for both services
 resource "google_cloud_run_service_iam_binding" "api_noauth" {
   project  = var.project_id
-  location = google_cloud_run_v2_service.api.location
+  location = var.region
   service  = google_cloud_run_v2_service.api.name
   role     = "roles/run.invoker"
   members = [
