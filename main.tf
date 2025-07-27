@@ -8,12 +8,12 @@ resource "google_project_service" "services" {
     "iam.googleapis.com",
     "certificatemanager.googleapis.com"
   ])
-  
+
   project = var.project_id
   service = each.value
-  
+
   disable_dependent_services = true
-  disable_on_destroy        = false
+  disable_on_destroy         = false
 }
 
 # Artifact Registry repository for container images
@@ -23,7 +23,7 @@ resource "google_artifact_registry_repository" "api" {
   repository_id = "${var.project}-api"
   description   = "Docker repository for ${var.project} API"
   format        = "DOCKER"
-  
+
   depends_on = [google_project_service.services]
 }
 
@@ -33,7 +33,7 @@ resource "google_artifact_registry_repository" "frontend" {
   repository_id = "${var.project}-frontend"
   description   = "Docker repository for ${var.project} frontend"
   format        = "DOCKER"
-  
+
   depends_on = [google_project_service.services]
 }
 
@@ -53,7 +53,7 @@ resource "google_project_iam_member" "cloud_run_invoker" {
 }
 
 # Cloud Run API service
- resource "google_cloud_run_v2_service" "api" {
+resource "google_cloud_run_v2_service" "api" {
   project  = var.project_id
   name     = "${var.project}-api"
   location = var.region
@@ -61,23 +61,23 @@ resource "google_project_iam_member" "cloud_run_invoker" {
 
   template {
     service_account = google_service_account.cloud_run.email
-    
+
     scaling {
       min_instance_count = 0
       max_instance_count = 10
     }
-    
+
     containers {
       image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.api.repository_id}/api:${var.api_image_tag}"
-      
-      env{
-        name = "BOOKWORK_API_MOCK_DATA"
+
+      env {
+        name  = "BOOKWORK_API_MOCK_DATA"
         value = "true" # Set to "false" in production
       }
       ports {
         container_port = 8080
       }
-      
+
       resources {
         limits = {
           cpu    = "1"
@@ -85,7 +85,7 @@ resource "google_project_iam_member" "cloud_run_invoker" {
         }
         cpu_idle = true
       }
-      
+
       startup_probe {
         http_get {
           path = "/health"
@@ -96,7 +96,7 @@ resource "google_project_iam_member" "cloud_run_invoker" {
         period_seconds        = 10
         failure_threshold     = 3
       }
-      
+
       liveness_probe {
         http_get {
           path = "/health"
@@ -109,7 +109,7 @@ resource "google_project_iam_member" "cloud_run_invoker" {
       }
     }
   }
-  
+
   depends_on = [google_project_service.services]
 }
 
@@ -122,19 +122,19 @@ resource "google_cloud_run_v2_service" "frontend" {
 
   template {
     service_account = google_service_account.cloud_run.email
-    
+
     scaling {
       min_instance_count = 0
       max_instance_count = 10
     }
-    
+
     containers {
       image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.frontend.repository_id}/frontend:${var.frontend_image_tag}"
-      
+
       ports {
         container_port = 3000
       }
-      
+
       resources {
         limits = {
           cpu    = "1"
@@ -142,7 +142,7 @@ resource "google_cloud_run_v2_service" "frontend" {
         }
         cpu_idle = true
       }
-      
+
       startup_probe {
         http_get {
           path = "/"
@@ -153,7 +153,7 @@ resource "google_cloud_run_v2_service" "frontend" {
         period_seconds        = 10
         failure_threshold     = 3
       }
-      
+
       liveness_probe {
         http_get {
           path = "/"
@@ -166,7 +166,7 @@ resource "google_cloud_run_v2_service" "frontend" {
       }
     }
   }
-  
+
   depends_on = [google_project_service.services]
 }
 
@@ -197,7 +197,7 @@ resource "google_compute_global_address" "default" {
   project = var.project_id
   name    = "${var.project}-lb-ip"
 }
- 
+
 # Google-managed SSL certificate
 resource "google_compute_managed_ssl_certificate" "bookwork_ssl" {
   project = var.project_id
@@ -207,17 +207,17 @@ resource "google_compute_managed_ssl_certificate" "bookwork_ssl" {
     domains = [
       var.domain_name,
       "www.${var.domain_name}"
-      ]
+    ]
   }
 }
 
 # Backend service for API
 resource "google_compute_backend_service" "api" {
-  project             = var.project_id
-  name                = "${var.project}-api-backend"
-  port_name           = "http"
-  protocol            = "HTTP"
-  timeout_sec         = 30
+  project               = var.project_id
+  name                  = "${var.project}-api-backend"
+  port_name             = "http"
+  protocol              = "HTTP"
+  timeout_sec           = 30
   load_balancing_scheme = "EXTERNAL_MANAGED"
 
   backend {
@@ -227,11 +227,11 @@ resource "google_compute_backend_service" "api" {
 
 # Backend service for frontend
 resource "google_compute_backend_service" "frontend" {
-  project             = var.project_id
-  name                = "${var.project}-frontend-backend"
-  port_name           = "http"
-  protocol            = "HTTP"
-  timeout_sec         = 30
+  project               = var.project_id
+  name                  = "${var.project}-frontend-backend"
+  port_name             = "http"
+  protocol              = "HTTP"
+  timeout_sec           = 30
   load_balancing_scheme = "EXTERNAL_MANAGED"
 
   backend {
@@ -261,7 +261,7 @@ resource "google_compute_region_network_endpoint_group" "frontend" {
 
   cloud_run {
     service = google_cloud_run_v2_service.frontend.name
-  } 
+  }
 }
 
 # Health checks
@@ -296,7 +296,7 @@ resource "google_compute_health_check" "frontend" {
 }
 
 # URL map for the load balancer
- resource "google_compute_url_map" "default" {
+resource "google_compute_url_map" "default" {
   project         = var.project_id
   name            = "${var.project}-urlmap"
   default_service = google_compute_backend_service.frontend.id
@@ -315,15 +315,15 @@ resource "google_compute_health_check" "frontend" {
       service = google_compute_backend_service.api.id
     }
   }
-} 
+}
 
 # HTTP(S) target proxy
- resource "google_compute_target_https_proxy" "default" {
+resource "google_compute_target_https_proxy" "default" {
   project          = var.project_id
   name             = "${var.project}-https-proxy"
   url_map          = google_compute_url_map.default.id
   ssl_certificates = [google_compute_managed_ssl_certificate.bookwork_ssl.id]
-} 
+}
 
 # HTTP target proxy for redirect
 resource "google_compute_target_http_proxy" "default" {
@@ -345,13 +345,13 @@ resource "google_compute_url_map" "redirect_to_https" {
 }
 
 # Global forwarding rule for HTTPS
- resource "google_compute_global_forwarding_rule" "https" {
+resource "google_compute_global_forwarding_rule" "https" {
   project    = var.project_id
   name       = "${var.project}-https-forwarding-rule"
   target     = google_compute_target_https_proxy.default.id
   port_range = "443"
   ip_address = google_compute_global_address.default.address
-} 
+}
 
 # Global forwarding rule for HTTP (redirect to HTTPS)
 resource "google_compute_global_forwarding_rule" "http" {
