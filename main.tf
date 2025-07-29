@@ -135,6 +135,11 @@ resource "google_cloud_run_v2_service" "frontend" {
         container_port = 3000
       }
 
+      env {
+                name  = "VITE_ENABLE_MOCK_DATA"
+                value = "true"
+            }
+
       resources {
         limits = {
           cpu    = "1"
