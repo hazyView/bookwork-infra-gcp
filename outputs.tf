@@ -29,8 +29,8 @@ output "frontend_artifact_registry_url" {
 }
 
 output "ssl_certificate_status" {
-  description = "The status of the managed SSL certificate"
-  value       = google_compute_managed_ssl_certificate.bookwork_ssl.self_link
+  description = "The self-managed SSL certificate resource link"
+  value       = google_compute_ssl_certificate.bookwork_le.self_link
 }
 
 output "dns_instructions" {
