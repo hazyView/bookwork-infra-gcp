@@ -199,16 +199,11 @@ resource "google_compute_global_address" "default" {
 }
 
 # Google-managed SSL certificate
-resource "google_compute_managed_ssl_certificate" "bookwork_ssl" {
-  project = var.project_id
-  name    = "bookwork-ssl"
-
-  managed {
-    domains = [
-      var.domain_name,
-      "www.${var.domain_name}"
-    ]
-  }
+resource "google_compute_ssl_certificate" "bookwork_le" {
+  name        = "bookwork-le"
+  project     = var.project_id
+  private_key = file("~/privkey.pem")
+  certificate = file("~/fullchain.pem")
 }
 
 # Backend service for API
@@ -322,7 +317,7 @@ resource "google_compute_target_https_proxy" "default" {
   project          = var.project_id
   name             = "${var.project}-https-proxy"
   url_map          = google_compute_url_map.default.id
-  ssl_certificates = [google_compute_managed_ssl_certificate.bookwork_ssl.id]
+  ssl_certificates = [google_compute_ssl_certificate.bookwork_le.id]
 }
 
 # HTTP target proxy for redirect
