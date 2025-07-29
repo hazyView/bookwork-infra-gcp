@@ -28,10 +28,10 @@ output "frontend_artifact_registry_url" {
   value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.frontend.repository_id}"
 }
 
-output "ssl_certificate_status" {
+/* output "ssl_certificate_status" {
   description = "The status of the managed SSL certificate"
   value       = google_compute_managed_ssl_certificate.bookwork_ssl.self_link
-}
+} */
 
 output "dns_instructions" {
   description = "DNS configuration instructions"
