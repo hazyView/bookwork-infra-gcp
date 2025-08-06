@@ -1,4 +1,4 @@
-# Enable required APIs
+/* # Enable required APIs
 resource "google_project_service" "services" {
   for_each = toset([
     "run.googleapis.com",
@@ -14,6 +14,12 @@ resource "google_project_service" "services" {
 
   disable_dependent_services = true
   disable_on_destroy         = false
+}
+
+#VPC network
+resource "google_compute_network" "vpc" {
+  name        = "${var.project}-vpc"
+  auto_create_subnetworks = false
 }
 
 # Artifact Registry repository for container images
@@ -68,7 +74,7 @@ resource "google_cloud_run_v2_service" "api" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.api.repository_id}/api:${var.api_image_tag}"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.api.repository_id}/api:latest"
 
       env {
         name  = "BOOKWORK_API_MOCK_DATA"
@@ -129,7 +135,7 @@ resource "google_cloud_run_v2_service" "frontend" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.frontend.repository_id}/frontend:${var.frontend_image_tag}"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.frontend.repository_id}/frontend:latest"
 
       ports {
         container_port = 3000
@@ -361,3 +367,103 @@ resource "google_compute_global_forwarding_rule" "http" {
   port_range = "80"
   ip_address = google_compute_global_address.default.address
 }
+*/
+/* GKE provisioning begins below */
+
+# VPC NETWORK
+resource "google_compute_network" "vpc" {
+  name = "${var.project}-vpc"
+  auto_create_subnetworks = false
+}
+
+resource "google_compute_subnetwork" "subnet" {
+  name = "${var.project}-subnet"
+  ip_cidr_range = "10.10.0.0/20"
+  region = var.region
+  network = google_compute_network.vpc.id
+  project = var.project_id
+  private_ip_google_access = true
+
+#Define both ranges 
+  secondary_ip_range = [
+    {
+      range_name    = "pods-range"
+      ip_cidr_range = "10.20.0.0/16"
+    },
+    {
+      range_name    = "services-range"
+      ip_cidr_range = "10.30.0.0/24"
+    }
+]
+}
+  
+
+# IAM for GKE nodes
+resource "google_service_account" "gke_node_sa" {
+  account_id = "${var.project}-gke-node-sa"
+  display_name = "Service Account for GKE Nodes"
+}
+
+resource "google_project_iam_member" "gke_artifact_reader" {
+  project = var.project_id
+  role = "roles/artifactregistry.reader"
+  member = "serviceAccount:${google_service_account.gke_node_sa.email}"
+}
+
+resource "google_project_iam_member" "gke_logging_writer" {
+  project = var.project_id
+  role = "roles/logging.logWriter"
+  member = "serviceAccount:${google_service_account.gke_node_sa.email}"
+}
+
+resource "google_project_iam_member" "gke_monitoring_writer" {
+  project = var.project_id
+  role = "roles/monitoring.metricWriter"
+  member = "serviceAccount:${google_service_account.gke_node_sa.email}"
+}
+
+# Artifact Registry
+resource "google_artifact_registry_repository" "registry" {
+  location = var.region
+  repository_id = "${var.project}-registry"
+  description = "Docker repo for ${var.project} applications"
+  format = "DOCKER"
+}
+
+# GKE Cluster
+resource "google_container_cluster" "primary" {
+  name = "${var.project}-cluster"
+  location = var.region
+
+  remove_default_node_pool = true
+  initial_node_count = 1
+  network = google_compute_network.vpc.id
+  subnetwork = google_compute_subnetwork.subnet.id
+
+  ip_allocation_policy {
+    cluster_secondary_range_name = google_compute_subnetwork.subnet.secondary_ip_range[0].range_name
+    services_secondary_range_name = google_compute_subnetwork.subnet.secondary_ip_range[1].range_name
+  }
+
+  workload_identity_config {
+    workload_pool = "${var.project_id}.svc.id.goog"
+  }
+
+  release_channel {
+    channel = "REGULAR"
+  }
+}
+  resource "google_container_node_pool" "primary_nodes" {
+    name = "${var.project}-primary-nodes"
+    cluster = google_container_cluster.primary.id
+    location = var.zone
+    node_count = 1
+
+    node_config {
+      machine_type = "e2-medium"
+      service_account = google_service_account.gke_node_sa.email
+      oauth_scopes = [
+        "https://www.googleapis.com/auth/cloud-platform"
+      ]
+    }
+  }
