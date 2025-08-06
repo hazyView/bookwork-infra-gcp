@@ -434,6 +434,7 @@ resource "google_artifact_registry_repository" "registry" {
 resource "google_container_cluster" "primary" {
   name = "${var.project}-cluster"
   location = var.region
+  deletion_protection = false
 
   remove_default_node_pool = true
   initial_node_count = 1
@@ -452,7 +453,13 @@ resource "google_container_cluster" "primary" {
   release_channel {
     channel = "REGULAR"
   }
+    addons_config {
+      http_load_balancing {
+        disabled = false
+      }
+    }
 }
+
   resource "google_container_node_pool" "primary_nodes" {
     name = "${var.project}-primary-nodes"
     cluster = google_container_cluster.primary.id
