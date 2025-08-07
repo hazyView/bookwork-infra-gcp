@@ -455,7 +455,7 @@ resource "google_container_cluster" "primary" {
   }
     addons_config {
       http_load_balancing {
-        disabled = false
+        disabled = true
       }
     }
 }
