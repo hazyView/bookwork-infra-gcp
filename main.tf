@@ -433,7 +433,7 @@ resource "google_artifact_registry_repository" "registry" {
 # GKE Cluster
 resource "google_container_cluster" "primary" {
   name = "${var.project}-cluster"
-  location = var.region
+  location = var.zone  # Changed from var.region to var.zone for zonal cluster
   deletion_protection = false
 
   remove_default_node_pool = true
@@ -461,16 +461,64 @@ resource "google_container_cluster" "primary" {
 }
 
   resource "google_container_node_pool" "primary_nodes" {
-    name = "${var.project}-primary-nodes"
+    name = "${var.project}-primary-nodes-v2"
     cluster = google_container_cluster.primary.id
     location = var.zone
-    node_count = 1
+    node_count = 2
 
     node_config {
       machine_type = "e2-medium"
+      disk_size_gb = 20
+      disk_type = "pd-standard"
       service_account = google_service_account.gke_node_sa.email
       oauth_scopes = [
         "https://www.googleapis.com/auth/cloud-platform"
       ]
+
+      # Security and performance best practices
+      preemptible = false
+      spot = false
+
+      # Enable automatic node upgrades and repairs
+      metadata = {
+        disable-legacy-endpoints = "true"
+      }
+
+      # Resource labels for better organization
+      labels = {
+        environment = "production"
+        node-pool = "primary"
+        managed-by = "terraform"
+      }
+
+      # Shielded VM features for security
+      shielded_instance_config {
+        enable_secure_boot = true
+        enable_integrity_monitoring = true
+      }
     }
+
+    # Node pool management settings
+    management {
+      auto_repair = true
+      auto_upgrade = true
+    }
+
+    # Upgrade settings for controlled rolling updates
+    upgrade_settings {
+      strategy = "SURGE"
+      max_surge = 1
+      max_unavailable = 0
+    }
+
+    # Lifecycle management for zero-downtime updates
+    lifecycle {
+      create_before_destroy = true
+    }
+
+    # Ensure proper dependency ordering
+    depends_on = [
+      google_container_cluster.primary,
+      google_service_account.gke_node_sa
+    ]
   }
