@@ -461,13 +461,13 @@ resource "google_container_cluster" "primary" {
 }
 
   resource "google_container_node_pool" "primary_nodes" {
-    name = "${var.project}-primary-nodes-v2"
+    name = "${var.project}-primary-nodes"
     cluster = google_container_cluster.primary.id
     location = var.zone
     node_count = 2
 
     node_config {
-      machine_type = "e2-medium"
+      machine_type = "e2-standard-2"
       disk_size_gb = 20
       disk_type = "pd-standard"
       service_account = google_service_account.gke_node_sa.email
@@ -509,11 +509,6 @@ resource "google_container_cluster" "primary" {
       strategy = "SURGE"
       max_surge = 1
       max_unavailable = 0
-    }
-
-    # Lifecycle management for zero-downtime updates
-    lifecycle {
-      create_before_destroy = true
     }
 
     # Ensure proper dependency ordering
